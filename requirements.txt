@@ -1,0 +1,9 @@
+pandas
+plotly
+ipywidgets
+voila
+bqplot
+ipympl
+ipyvolume
+scipy
+voila
