@@ -11,3 +11,4 @@ numpy
 ipython
 requests
 urllib3
+anywidget
