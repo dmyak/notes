@@ -7,3 +7,4 @@ ipympl
 ipyvolume
 scipy
 voila
+numpy
