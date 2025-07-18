@@ -8,3 +8,6 @@ ipyvolume
 scipy
 voila
 numpy
+ipython
+requests
+urllib3
