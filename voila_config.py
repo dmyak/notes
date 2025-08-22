@@ -1,3 +1,4 @@
 c = get_config()
+c.VoilaConfiguration.file_whitelist = ['app.ipynb']
 c.VoilaConfiguration.show_tracebacks = True
-c.MappingKernelManager.default_kernel_name = 'python3'
+c.VoilaConfiguration.enable_nbextensions = True
