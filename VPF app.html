@@ -1,0 +1,509 @@
+# Write the complete HTML file to the sandbox so the user can download it.
+html = r'''<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>VPF Toolkit — Stacked Toggle (Editable + Add/Delete + Snazzy Hover)</title>
+<style>
+  :root{
+    --bg:#0f1820; --panel:#0d2230; --soft:#0c1b25; --ink:#cfe8ff; --mut:#8fb6d4;
+    --accent:#00d4ff; --accent2:#8a5cf6; --citi:#ff9f1a; --ms:#46b3ff;
+  }
+  html,body{height:100%; margin:0; background:var(--bg); color:var(--ink); font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+  .tabs{position:sticky; top:0; background:var(--bg); padding:10px 14px}
+  .btn{background:linear-gradient(180deg,#16384e,#0d2c3f); color:#e8f6ff; border:1px solid #1a4561; border-radius:12px; padding:8px 12px; cursor:pointer; font-weight:600}
+  .btn.small{padding:6px 10px; font-size:12px}
+  .btn.primary{background:linear-gradient(180deg,#00b8ff,#0077ff); border-color:#1b7de4}
+  .btn.ghost{background:transparent; border-color:#2a4d64; color:#9ed9ff}
+  h1{margin:18px 20px 8px; font-size:28px}
+  .wrap{display:grid; grid-template-columns: 1.1fr 360px; gap:14px; padding:10px 14px 0}
+  .card{background:linear-gradient(180deg,var(--panel),var(--soft)); border:1px solid #143449; border-radius:18px; box-shadow:0 12px 40px rgba(0,0,0,.35)}
+  .card h3{margin:14px 16px 10px; font-size:13px; color:var(--mut); text-transform:uppercase; letter-spacing:.12em}
+  .pad{padding:14px 16px 16px}
+  .controls .group{margin:10px 16px 14px}
+  .controls label{display:block; font-size:12px; color:var(--mut); margin-bottom:6px}
+  .row{display:flex; align-items:center; gap:8px}
+  input[type="number"], select, input[type="text"]{background:#06121a; border:1px solid #1a3a4f; color:var(--ink); border-radius:12px; padding:8px 10px; outline:none; font-size:13px; width:100%}
+  input[type="range"]{width:100%}
+  .toggle{display:inline-flex; gap:8px; align-items:center; font-size:13px; color:var(--ink)}
+  .legend{display:flex; gap:16px; align-items:center; margin:8px 14px 14px; color:#8fb6d4; font-size:12px}
+  .dot{width:10px; height:10px; border-radius:10px; display:inline-block}
+  .dot.citi{background:var(--citi)}
+  .dot.ms{outline:2px dotted var(--ms); outline-offset:2px; background:transparent}
+
+  /* Editable grid */
+  .grid-wrap{margin:14px; border:1px solid #173a50; border-radius:14px; overflow:hidden}
+  table{width:100%; border-collapse:collapse; font-size:13px}
+  thead{background:#0f2a3c}
+  th, td{padding:10px 10px; border-bottom:1px solid #123247}
+  th{color:#a7c9e3; font-weight:700; text-align:left}
+  tbody tr:hover{background:rgba(0,200,255,.06)}
+  td.actions{width:92px; text-align:right}
+  .row-btn{border:1px solid #245272; background:#0a2130; color:#bfe6ff; border-radius:10px; padding:5px 10px; cursor:pointer; font-size:12px; margin-left:6px}
+  .row-btn.del{border-color:#6b1f2a; color:#ffd9de; background:#2a0e13}
+  .toolbar{display:flex; gap:10px; align-items:center; padding:10px; background:#0b2433; border-top:1px solid #123247}
+  .toolbar .spacer{flex:1}
+  .notice{font-size:12px; color:#9cc9e6}
+
+  /* Plotly on dark */
+  .js-plotly-plot .xtick text, .js-plotly-plot .ytick text{ fill:#e9f5ff !important }
+  .js-plotly-plot .xgrid, .js-plotly-plot .ygrid{ stroke:#264a62 !important }
+
+  /* Snazzy hover card */
+  #hoverCard{
+    position:fixed; z-index:9999; pointer-events:none; display:none;
+    min-width:220px; max-width:300px;
+    background:radial-gradient(160px 90px at 8% 10%, rgba(0,255,255,.12), transparent) #061722;
+    border:1px solid #1c4f6a; border-radius:14px; padding:10px 12px;
+    box-shadow:0 12px 40px rgba(0,0,0,.45), inset 0 0 30px rgba(0,180,255,.08);
+    color:#dff7ff; font-size:13px; line-height:1.35
+  }
+  #hoverCard b{color:#9ee8ff}
+  #hoverCard .title{font-weight:800; color:#aef; margin-bottom:4px}
+  #hoverCard .row{display:flex; justify-content:space-between}
+  #hoverCard .mut{color:#99c6e3}
+
+  /* Comparison highlight */
+  .compare td.hi{
+    background: linear-gradient(180deg, rgba(0,212,255,.12), rgba(0,160,220,.06));
+    border-color:#2a6d8c !important;
+    box-shadow: inset 0 0 0 1px rgba(0,212,255,.2), 0 0 0 1px rgba(0,212,255,.08);
+    color:#dff7ff;
+    font-weight:700;
+  }
+  .hidden{ display:none; }
+</style>
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+</head>
+<body>
+  <div class="tabs">
+    <button class="btn primary small" id="tabPayoff" disabled>Payoff Profiles</button>
+  </div>
+
+  <h1>VPF Toolkit — Stacked Toggle</h1>
+
+  <div class="wrap">
+    <div class="card">
+      <h3>Payoff Profiles</h3>
+      <div id="chart" class="pad" style="height:420px"></div>
+      <div class="legend">
+        <span class="dot citi"></span> Citi (thick)
+        <span class="dot ms"></span> MS (thin / dotted)
+      </div>
+
+      <!-- Editable data grid -->
+      <div class="grid-wrap" id="gridCard">
+        <table id="dataTable">
+          <thead>
+            <tr>
+              <th style="width:80px">Bank</th>
+              <th style="width:90px">Tenor</th>
+              <th style="width:80px">Put %</th>
+              <th style="width:100px">Call %</th>
+              <th style="width:110px">Proceeds %</th>
+              <th class="actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+        <div class="toolbar">
+          <button class="btn small" id="addRowBtn">+ Add row</button>
+          <div class="spacer"></div>
+          <button class="btn small ghost" id="downloadBtn">Download JSON</button>
+          <label class="btn small ghost">Load JSON <input type="file" id="loadJson" accept=".json" style="display:none"></label>
+          <button class="btn small primary" id="applyBtn">Apply changes</button>
+        </div>
+        <div class="toolbar" style="border-top:0"><span class="notice">Tip: edit cells, click Apply (or press Enter) to redraw chart & table. Add/Delete rows to manage scenarios.</span></div>
+      </div>
+    </div>
+
+    <div class="card controls">
+      <h3>Controls</h3>
+
+      <!-- Ticker -> Spot -->
+      <div class="group">
+        <label>Stock symbol ? Spot</label>
+        <div class="row">
+          <input id="symbol" type="text" placeholder="Type ticker (e.g., AAPL) and press Enter">
+        </div>
+        <div id="quoteStatus" class="mut" style="margin-top:6px; font-size:12px;"></div>
+      </div>
+
+      <div class="group">
+        <label>Tenor</label>
+        <div class="row">
+          <label class="toggle"><input type="radio" name="tenor" value="24" checked> 24 months</label>
+          <label class="toggle"><input type="radio" name="tenor" value="36"> 36 months</label>
+        </div>
+      </div>
+      <div class="group">
+        <label>Bank visibility</label>
+        <div class="row">
+          <label class="toggle"><input type="checkbox" id="showCiti" checked> Show Citi</label>
+          <label class="toggle"><input type="checkbox" id="showMS" checked> Show Morgan Stanley</label>
+        </div>
+      </div>
+      <div class="group">
+        <label>Spot</label>
+        <input id="spot" type="range" min="120" max="420" value="285">
+      </div>
+      <div class="group">
+        <label>Notional</label>
+        <div class="row"><span>$</span><input id="notional" type="number" value="1000000" step="100000" min="0"></div>
+      </div>
+      <div class="pad">
+        <div id="strikeBadge" style="background:#0a2535; border:1px solid #18435b; padding:8px 10px; border-radius:12px; display:inline-block; color:#9edcff">
+          <strong>Spot:</strong> $<span id="spotLabel">285</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Comparison table -->
+  <div class="card pad" id="compareCard" style="margin:12px 14px 20px">
+    <h3>Citi vs MS VPF Comparison (from data grid)</h3>
+    <div id="compareTable"></div>
+  </div>
+
+  <!-- Snazzy hover card -->
+  <div id="hoverCard"></div>
+
+<script>
+/* ---------- Config ---------- */
+/* TODO: replace with your real Cloudflare Worker URL, e.g.
+   https://stock-quote-proxy.youracctsub.workers.dev   */
+const WORKER_ENDPOINT = "https://snotesma.workers.dev";
+
+/* ------------------------ Data ------------------------ */
+let rows = [
+  {bank:'Citi', tenor:24, put:90, call:128.25, proceeds:83.35},
+  {bank:'Citi', tenor:24, put:80, call:141.25, proceeds:74.09},
+  {bank:'Citi', tenor:24, put:70, call:154.75, proceeds:64.85},
+
+  {bank:'MS', tenor:24, put:90, call:128.25, proceeds:83.30},
+  {bank:'MS', tenor:24, put:80, call:141.25, proceeds:74.05},
+  {bank:'MS', tenor:24, put:70, call:154.75, proceeds:64.80},
+
+  {bank:'Citi', tenor:36, put:90, call:138.00, proceeds:80.29},
+  {bank:'Citi', tenor:36, put:80, call:153.00, proceeds:71.33},
+  {bank:'Citi', tenor:36, put:70, call:169.00, proceeds:62.45},
+
+  {bank:'MS', tenor:36, put:90, call:138.00, proceeds:80.25},
+  {bank:'MS', tenor:36, put:80, call:153.00, proceeds:71.30},
+  {bank:'MS', tenor:36, put:70, call:169.00, proceeds:62.40},
+];
+
+const $ = s=>document.querySelector(s);
+const $$ = s=>Array.from(document.querySelectorAll(s));
+const toNum = v => (v=parseFloat(v), isFinite(v)?v:0);
+
+const TENOR_OPTIONS = Array.from({length:31}, (_,i)=>i+6);
+
+/* ------------------------ Table ------------------------ */
+function renderTable(){
+  const tbody = $('#tbody'); tbody.innerHTML='';
+  rows.forEach((r, idx)=>{
+    const tr = document.createElement('tr');
+
+    const tdB=document.createElement('td');
+    const bSel=document.createElement('select'); ['Citi','MS'].forEach(b=>{const o=document.createElement('option');o.value=b;o.textContent=b;if(b===r.bank)o.selected=true;bSel.appendChild(o);});
+    bSel.onchange=()=>rows[idx].bank=bSel.value; tdB.appendChild(bSel);
+
+    const tdT=document.createElement('td');
+    const tSel=document.createElement('select');
+    TENOR_OPTIONS.forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t+'m';if(t===r.tenor)o.selected=true;tSel.appendChild(o);});
+    tSel.onchange=()=>rows[idx].tenor=parseInt(tSel.value); tdT.appendChild(tSel);
+
+    const tdP=document.createElement('td'); tdP.innerHTML=`<input type="number" step="0.01" value="${r.put}" style="width:100px">`; tdP.firstChild.oninput=e=>rows[idx].put=toNum(e.target.value);
+    const tdC=document.createElement('td'); tdC.innerHTML=`<input type="number" step="0.01" value="${r.call}" style="width:120px">`; tdC.firstChild.oninput=e=>rows[idx].call=toNum(e.target.value);
+    const tdR=document.createElement('td'); tdR.innerHTML=`<input type="number" step="0.01" value="${r.proceeds}" style="width:120px">`; tdR.firstChild.oninput=e=>rows[idx].proceeds=toNum(e.target.value);
+
+    const tdA=document.createElement('td'); tdA.className='actions';
+    const up=document.createElement('button'); up.className='row-btn'; up.textContent='?'; up.title='Move up'; up.onclick=()=>{if(idx>0){[rows[idx-1],rows[idx]]=[rows[idx],rows[idx-1]]; renderTable();}};
+    const dn=document.createElement('button'); dn.className='row-btn'; dn.textContent='?'; dn.title='Move down'; dn.onclick=()=>{if(idx<rows.length-1){[rows[idx+1],rows[idx]]=[rows[idx],rows[idx+1]]; renderTable();}};
+    const del=document.createElement('button'); del.className='row-btn del'; del.textContent='Delete'; del.onclick=()=>{rows.splice(idx,1); renderTable();};
+    tdA.append(up,dn,del);
+
+    tr.append(tdB,tdT,tdP,tdC,tdR,tdA); tbody.appendChild(tr);
+  });
+}
+renderTable();
+
+$('#addRowBtn').onclick=()=>{ rows.push({bank:'Citi',tenor:24,put:90,call:120,proceeds:80}); renderTable(); };
+$('#downloadBtn').onclick=()=>{ const blob=new Blob([JSON.stringify(rows,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url;a.download='vpf-data.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(url),500); };
+$('#loadJson').onchange=e=>{ const f=e.target.files[0]; if(!f) return; const fr=new FileReader(); fr.onload=()=>{ try{ rows=JSON.parse(fr.result); renderTable(); }catch{ alert('Invalid JSON'); } }; fr.readAsText(f); };
+
+/* ------------------------ Hover helpers ------------------------ */
+function levelAt(r, x, spot){
+  const putX = spot*(r.put/100), callX = spot*(r.call/100);
+  if (x<=putX) return r.put;
+  if (x>=callX) return r.call;
+  return r.put + (r.call-r.put)*((x-putX)/(callX-putX));
+}
+
+/* ------------------------ Chart ------------------------ */
+let lastFiltered = [];
+function draw(){
+  const tenor=parseInt(document.querySelector('input[name="tenor"]:checked').value);
+  const showCiti=$('#showCiti').checked, showMS=$('#showMS').checked;
+  const spot=parseFloat($('#spot').value); $('#spotLabel').textContent=spot.toFixed(0);
+
+  const filtered = rows.filter(r=>r.tenor===tenor).sort((a,b)=>(a.bank>b.bank?1:-1)||a.put-b.put);
+  lastFiltered = filtered.slice();
+
+  const maxCallSpot = filtered.length? Math.max(...filtered.map(r=>spot*(r.call/100))) : spot*1.5;
+  const xEnd = maxCallSpot*1.25;
+
+  let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
+  const traces = filtered.map(r=>{
+    const x=[Math.max(0,spot*(r.put/100)*0.6), spot*(r.put/100), spot*(r.call/100), xEnd];
+    const y=[r.put,r.put,r.call,r.call];
+    minX=Math.min(minX,x[0]); maxX=Math.max(maxX,x[3]); minY=Math.min(minY,r.put); maxY=Math.max(maxY,r.call);
+    return {
+      x,y, mode:'lines',
+      line:{width:(r.bank==='Citi'?4:2), color:(r.bank==='Citi'?'rgb(255,159,26)':'rgb(70,179,255)'), dash:(r.bank==='MS'?'dot':'solid')},
+      name:`${r.bank} ${r.put} / ${r.call}`,
+      visible:(r.bank==='Citi'?showCiti:showMS)?true:'legendonly',
+      hoverinfo:'skip'
+    };
+  });
+  if(!isFinite(minX)){minX=100;maxX=600;minY=60;maxY=170;}
+
+  const layout={
+    margin:{l:70,r:20,t:10,b:50},
+    paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+    xaxis:{title:'X: Underlying Price ($)', color:'#dff3ff', gridcolor:'#1e4259', range:[minX,maxX]},
+    yaxis:{title:'Y: % strike levels (put% – call%)', color:'#dff3ff', gridcolor:'#1e4259', range:[Math.floor(minY-5),Math.ceil(maxY+5)]},
+    hovermode:'closest',
+    showlegend:true, legend:{orientation:'h', y:-0.18, x:0.02, font:{color:'#9ecdf2'}}
+  };
+
+  Plotly.newPlot('chart', traces, layout, {displayModeBar:false, responsive:true}).then(gd=>{
+    const tip = document.getElementById('hoverCard');
+
+    const fmt  = n => Number(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+    const fmt0 = n => Math.round(Number(n)).toLocaleString();
+
+    const plotArea = gd.querySelector('.nsewdrag') || gd;
+
+    function handleMove(e){
+      const notional = parseFloat(document.getElementById('notional').value)||0;
+      const spot = parseFloat(document.getElementById('spot').value)||0;
+
+      const ax = gd._fullLayout.xaxis;
+      const ay = gd._fullLayout.yaxis;
+      const r  = plotArea.getBoundingClientRect();
+      const px = e.clientX - r.left;
+      const py = e.clientY - r.top;
+
+      if (px < 0 || py < 0 || px > r.width || py > r.height){
+        tip.style.display='none';
+        return;
+      }
+
+      const x = ax.p2l(px);
+      const y = ay.p2l(py);
+
+      const showC = document.getElementById('showCiti').checked;
+      const showM = document.getElementById('showMS').checked;
+      const visFiltered = lastFiltered.filter(r => (r.bank==='Citi'?showC:showM));
+
+      let best=null, bestDist=Infinity;
+      for(const r of visFiltered){
+        const yhat = levelAt(r,x,spot);
+        const d = Math.abs(y - yhat);
+        if(d<bestDist){bestDist=d; best=r;}
+      }
+
+      const floor = best ? (notional*best.put/100) : 0;
+      const cap   = best ? (notional*best.call/100) : 0;
+      const procP = best ? (best.proceeds||0) : 0;
+      const proc$ = notional * (procP/100);
+
+      tip.innerHTML =
+        `<div class="title">Underlying: <b>$${fmt(x)}</b></div>`+
+        `<div class="row"><span class="mut">% Strike (cursor):</span><b>${fmt(y)}%</b></div>`+
+        (best ? `<div class="row"><span class="mut">Nearest:</span><b>${best.bank} ${best.put} / ${best.call}</b></div>` : '')+
+        `<div class="row"><span class="mut">Floor @ put:</span><b>$${fmt0(floor)}</b></div>`+
+        `<div class="row"><span class="mut">Cap @ call:</span><b>$${fmt0(cap)}</b></div>`+
+        `<div class="row"><span class="mut">Proceeds %:</span><b>${fmt(procP)}%</b></div>`+
+        `<div class="row"><span class="mut">Proceeds $:</span><b>$${fmt0(proc$)}</b></div>`;
+
+      const pad=14, vw=window.innerWidth, vh=window.innerHeight;
+      let L = e.clientX + 16, T = e.clientY + 16;
+      tip.style.display='block';
+      const rect = tip.getBoundingClientRect();
+      if(L+rect.width+pad>vw) L = e.clientX - rect.width - 16;
+      if(T+rect.height+pad>vh) T = e.clientY - rect.height - 16;
+      tip.style.left = `${L}px`; tip.style.top = `${T}px`;
+    }
+
+    function handleLeave(){ tip.style.display='none'; }
+
+    gd.removeAllListeners && gd.removeAllListeners('plotly_hover');
+    gd.removeAllListeners && gd.removeAllListeners('plotly_unhover');
+
+    plotArea.addEventListener('mousemove', handleMove);
+    plotArea.addEventListener('mouseleave', handleLeave);
+  });
+
+  rebuildCompare(filtered);
+}
+
+/* ------------------------ Comparison table (with highlight) ------------------------ */
+function rebuildCompare(filtered){
+  const groups={};
+  filtered.forEach(r=>{ const k=r.put; (groups[k]||(groups[k]={}))[r.bank]=r; });
+
+  let html='<table class="compare" style="width:100%; border-collapse:collapse">';
+  html+='<thead><tr style="background:#0f2a3c">'+
+        '<th style="padding:8px 10px;text-align:left">Put %</th>'+
+        '<th style="padding:8px 10px;text-align:left">Citi Call %</th>'+
+        '<th style="padding:8px 10px;text-align:left">MS Call %</th>'+
+        '<th style="padding:8px 10px;text-align:left">Citi Proceeds %</th>'+
+        '<th style="padding:8px 10px;text-align:left">MS Proceeds %</th>'+
+        '</tr></thead><tbody>';
+
+  Object.keys(groups).sort((a,b)=>parseFloat(a)-parseFloat(b)).forEach(k=>{
+    const c = groups[k]['Citi'];
+    const m = groups[k]['MS'];
+
+    const cCall = (c && c.call!=null) ? Number(c.call) : null;
+    const mCall = (m && m.call!=null) ? Number(m.call) : null;
+    const cProc = (c && c.proceeds!=null) ? Number(c.proceeds) : null;
+    const mProc = (m && m.proceeds!=null) ? Number(m.proceeds) : null;
+
+    const hiCcall = (cCall!=null && mCall!=null && cCall > mCall);
+    const hiMcall = (cCall!=null && mCall!=null && mCall > cCall);
+    const hiCproc = (cProc!=null && mProc!=null && cProc > mProc);
+    const hiMproc = (cProc!=null && mProc!=null && mProc > cProc);
+
+    html+=`<tr>
+      <td style="padding:8px 10px;border-bottom:1px solid #123247">${k}%</td>
+      <td class="${hiCcall?'hi':''}" style="padding:8px 10px;border-bottom:1px solid #123247">${cCall!=null?cCall.toFixed(2):'—'}</td>
+      <td class="${hiMcall?'hi':''}" style="padding:8px 10px;border-bottom:1px solid #123247">${mCall!=null?mCall.toFixed(2):'—'}</td>
+      <td class="${hiCproc?'hi':''}" style="padding:8px 10px;border-bottom:1px solid #123247">${cProc!=null?cProc.toFixed(2):'—'}</td>
+      <td class="${hiMproc?'hi':''}" style="padding:8px 10px;border-bottom:1px solid #123247">${mProc!=null?mProc.toFixed(2):'—'}</td>
+    </tr>`;
+  });
+
+  html+='</tbody></table>';
+  $('#compareTable').innerHTML=html;
+}
+
+/* ------------------------ Ticker ? Spot using Worker ------------------------ */
+function setQuoteStatus(msg, isError=false){
+  const el = $('#quoteStatus');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.style.color = isError ? '#ffd6db' : '#9cc9e6';
+}
+
+async function fetchSpotForSymbol(sym){
+  const useWorker = async () => {
+    const base = WORKER_ENDPOINT.replace(/\/+$/,'');
+    const url  = `${base}/?symbol=${encodeURIComponent(sym)}`;
+    const res  = await fetch(url, { cache: 'no-store' });
+    const j    = await res.json();
+    if (!res.ok || j.error) throw new Error(j.error || "Quote lookup failed.");
+    return j; // { price, symbol, name, currency, session, asOf, source }
+  };
+
+  const useDirectYahooMirror = async () => {
+    // Fallback: Yahoo chart via CORS mirror (no Worker). Keyless, session-agnostic.
+    const s = sym.trim().toUpperCase().replace(/\./g,'-');
+    const url = `https://r.jina.ai/https/query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(s)}?range=1d&interval=1m&includePrePost=true`;
+    const res = await fetch(url, { cache: 'no-store' });
+    const j = await res.json();
+    const r = j?.chart?.result?.[0];
+    if(!r) throw new Error("Fallback (Yahoo) returned no data.");
+    const closes = r?.indicators?.quote?.[0]?.close || [];
+    let last=null, idx=-1;
+    for(let i=closes.length-1;i>=0;i--){ const v=closes[i]; if(v!=null && isFinite(v)){ last=Number(v); idx=i; break; } }
+    if(last==null) throw new Error("Fallback (Yahoo) missing last price.");
+    const ts = (r.timestamp && r.timestamp[idx]) ? r.timestamp[idx] : r?.meta?.regularMarketTime || null;
+    const asOf = ts ? new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit'}).format(new Date(ts*1000))+' ET' : '';
+    return {
+      price:last,
+      symbol:r?.meta?.symbol || s,
+      name:r?.meta?.shortName || r?.meta?.symbol || s,
+      currency:r?.meta?.currency || 'USD',
+      session:'regular',
+      asOf,
+      source:'yahoo(chart via mirror)'
+    };
+  };
+
+  try {
+    // Try Worker first
+    if (!/^https?:\/\//i.test(WORKER_ENDPOINT)) throw new TypeError("Worker URL not set");
+    return await useWorker();
+  } catch (err) {
+    // If the fetch itself failed (network/corp block), fall back
+    if (String(err).includes('Failed to fetch') || String(err).includes('Worker URL not set')) {
+      try { return await useDirectYahooMirror(); }
+      catch (e2) { throw new Error(`Worker unreachable. Fallback failed: ${e2.message}`); }
+    }
+    // Worker responded but with error JSON
+    throw err;
+  }
+}
+
+
+function setSpotFromPrice(p){
+  const slider = $('#spot');
+  let price = Number(p);
+  if(!isFinite(price) || price<=0) return;
+
+  let min = Number(slider.min), max = Number(slider.max);
+  if(price < min || price > max){
+    min = Math.max(1, Math.floor(price*0.4));
+    max = Math.ceil(price*1.8);
+    slider.min = String(min);
+    slider.max = String(max);
+  }
+
+  slider.value = String(Math.round(price));
+  $('#spotLabel').textContent = Math.round(price);
+  draw();
+}
+
+// Bind Enter on ticker input
+$('#symbol').addEventListener('keydown', async (e)=>{
+  if(e.key==='Enter'){
+    const raw = e.currentTarget.value;
+    if(!raw.trim()) return;
+    setQuoteStatus('Fetching quote…');
+    try{
+      const q = await fetchSpotForSymbol(raw);
+      setQuoteStatus(`${q.name || q.symbol} (${q.symbol}) — ${q.session || ''} $${Number(q.price).toFixed(2)} ${q.currency || ''}${q.asOf ? ' · as of '+q.asOf : ''}`);
+      setSpotFromPrice(q.price);
+    }catch(err){
+      setQuoteStatus(err.message || 'Fetch failed', true);
+    }
+  }
+});
+
+/* ------------------------ Wiring ------------------------ */
+$('#spot').addEventListener('input', draw);
+$$('input[name="tenor"]').forEach(r=>r.addEventListener('change', draw));
+$('#showCiti').addEventListener('change', draw);
+$('#showMS').addEventListener('change', draw);
+$('#applyBtn').addEventListener('click', draw);
+
+document.addEventListener('keydown', e=>{
+  if(e.key==='Enter' && !e.shiftKey && !e.repeat){
+    const btn=$('#applyBtn'); if(btn && btn.offsetParent!==null){ e.preventDefault(); btn.click(); }
+  }
+});
+
+draw();
+</script>
+</body>
+</html>
+'''
+path = '/mnt/data/vpf_toolkit_msn_worker.html'
+with open(path, 'w', encoding='utf-8') as f:
+    f.write(html)
+path
